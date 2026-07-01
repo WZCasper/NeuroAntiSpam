@@ -1,1 +1,36 @@
-[]
+[
+  {
+    "id": -1003712340535,
+    "title": "4WK ЧАТ",
+    "username": null,
+    "settings": {
+      "mode": "medium",
+      "spam_threshold": 0.75,
+      "captcha_enabled": true,
+      "captcha_timeout": 60,
+      "flood_enabled": true,
+      "flood_limit": 5,
+      "flood_window": 10,
+      "antilink_enabled": true,
+      "antilink_new_only": true,
+      "new_user_quarantine": true,
+      "quarantine_msgs": 5,
+      "shadowban_enabled": false,
+      "raid_protection": true,
+      "raid_threshold": 10,
+      "language_filter": null,
+      "welcome_message": null,
+      "welcome_enabled": true,
+      "notify_admin": true,
+      "notify_channel_id": null,
+      "log_actions": true,
+      "night_mode_enabled": false,
+      "night_mode_start": 23,
+      "night_mode_end": 7,
+      "auto_delete_spam": true,
+      "max_warnings": 3
+    },
+    "member_count": 1,
+    "added_at": "2026-07-01T10:27:24.854319"
+  }
+]
