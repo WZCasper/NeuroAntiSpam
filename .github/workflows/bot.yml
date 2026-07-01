@@ -1,0 +1,136 @@
+name: NeuroAntiSpam Bot
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"   # Daily spam DB update at 03:00 UTC
+
+# Required for GitHub Pages deployment
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  # ── Job 1: Deploy static dashboard to GitHub Pages ─────────────────────────
+  deploy-pages:
+    name: Deploy Dashboard to GitHub Pages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create data directory with placeholder files
+        run: |
+          mkdir -p data
+          # Only create placeholders if files don't exist yet
+          if [ ! -f data/groups.json ]; then
+            echo "[]" > data/groups.json
+          fi
+          if [ ! -f data/stats.json ]; then
+            echo "{}" > data/stats.json
+          fi
+          if [ ! -f data/meta.json ]; then
+            echo "{}" > data/meta.json
+          fi
+
+      - name: Copy dashboard to gh-pages root
+        run: |
+          mkdir -p gh-pages
+          cp website/index.html gh-pages/index.html
+          cp -r data gh-pages/data
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gh-pages
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "🌐 Deploy dashboard [skip ci]"
+
+  # ── Job 2: Run the bot (polling mode, up to 350 min) ───────────────────────
+  run-bot:
+    name: Deploy & Run Bot
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 350
+    needs: deploy-pages
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: bot/requirements.txt
+
+      - name: Install dependencies
+        working-directory: bot
+        run: pip install -r requirements.txt
+
+      - name: Copy sync modules to bot directory
+        run: |
+          cp sync_to_github.py bot/
+          cp deeplink_handler.py bot/
+          cp meta_updater.py bot/
+
+      - name: Update meta.json with write token
+        working-directory: bot
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ secrets.GH_REPO }}
+          BOT_USERNAME: ${{ secrets.BOT_USERNAME }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            python meta_updater.py
+          else
+            echo "GH_TOKEN not set, skipping meta update"
+          fi
+
+      - name: Run NeuroAntiSpam Bot
+        working-directory: bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          WEBSITE_URL: "https://WZCasper.github.io/NeuroAntiSpam/"
+          API_SECRET_KEY: ${{ secrets.API_SECRET_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ secrets.GH_REPO }}
+          BOT_USERNAME: ${{ secrets.BOT_USERNAME }}
+          SUPER_ADMINS: ${{ secrets.SUPER_ADMINS }}
+        run: python main.py
+
+  # ── Job 3: Update global spam database (daily at 03:00 UTC) ────────────────
+  update-spam-db:
+    name: Update Global Spam Database
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Update spam phrases
+        run: python scripts/update_spam_db.py
+
+      - name: Commit updated database
+        run: |
+          git config --global user.name "NeuroAntiSpam Bot"
+          git config --global user.email "bot@neuroantispam.com"
+          git add database/global_spam_phrases.json || true
+          git diff --staged --quiet || git commit -m "🤖 Auto-update spam database [skip ci]"
+          git push || true
