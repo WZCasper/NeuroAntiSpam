@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroAntiSpam — Панель управления</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0d0f14;--surface:#161b27;--surface2:#1e2535;--border:#2a3347;
+    --accent:#4f8ef7;--accent2:#7c5cfc;--success:#2ecc71;--danger:#e74c3c;
+    --warn:#f39c12;--text:#e8eaf0;--muted:#7a8499;--radius:12px;
+    --shadow:0 4px 24px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh}
+  .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .main{padding:28px;overflow-x:hidden}
+  .logo{display:flex;align-items:center;gap:10px;padding:6px 10px 18px;border-bottom:1px solid var(--border);margin-bottom:8px}
+  .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .logo-text{font-size:14px;font-weight:700}.logo-text span{color:var(--accent)}
+  .nav-section{font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--muted);text-transform:uppercase;padding:10px 10px 4px}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s;border:none;background:none;width:100%;text-align:left}
+  .nav-item:hover{background:var(--surface2);color:var(--text)}
+  .nav-item.active{background:rgba(79,142,247,.15);color:var(--accent)}
+  .nav-item .icon{font-size:15px;width:18px;text-align:center}
+  .group-select{margin:6px 0;padding:0 2px}
+  .group-select select{width:100%;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer}
+  .user-card{margin-top:auto;padding:11px;background:var(--surface2);border-radius:10px;display:flex;align-items:center;gap:9px}
+  .user-avatar{width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;overflow:hidden;flex-shrink:0}
+  .user-avatar img{width:100%;height:100%;object-fit:cover}
+  .user-info{flex:1;min-width:0}
+  .user-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .user-role{font-size:11px;color:var(--muted)}
+  .logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:3px}
+  .page{display:none}.page.active{display:block}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
+  .card-title{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+  .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .stat-value{font-size:28px;font-weight:700;line-height:1}
+  .stat-value.accent{color:var(--accent)}.stat-value.success{color:var(--success)}.stat-value.danger{color:var(--danger)}.stat-value.warn{color:var(--warn)}
+  .stat-sub{font-size:11px;color:var(--muted);margin-top:5px}
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+  .chart-card canvas{max-height:200px}
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .settings-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  .settings-section h3{font-size:13px;font-weight:600;margin-bottom:14px;color:var(--accent)}
+  .form-group{margin-bottom:12px}
+  .form-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block}
+  .form-control{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s}
+  .form-control:focus{border-color:var(--accent)}
+  .form-control[type=range]{padding:5px 0;cursor:pointer;accent-color:var(--accent)}
+  .range-value{font-size:12px;color:var(--accent);font-weight:600}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
+  .toggle-row:last-child{border-bottom:none}
+  .toggle-label{font-size:13px}.toggle-sub{font-size:11px;color:var(--muted);margin-top:1px}
+  .toggle{position:relative;width:42px;height:23px;flex-shrink:0}
+  .toggle input{opacity:0;width:0;height:0}
+  .toggle-slider{position:absolute;inset:0;background:var(--surface2);border-radius:23px;cursor:pointer;transition:.2s;border:1px solid var(--border)}
+  .toggle-slider:before{content:'';position:absolute;width:17px;height:17px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:.2s}
+  .toggle input:checked+.toggle-slider{background:rgba(79,142,247,.2);border-color:var(--accent)}
+  .toggle input:checked+.toggle-slider:before{transform:translateX(19px);background:var(--accent)}
+  .mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .mode-btn{padding:9px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;text-align:center;transition:all .15s}
+  .mode-btn:hover{border-color:var(--accent);color:var(--text)}
+  .mode-btn.active{border-color:var(--accent);background:rgba(79,142,247,.15);color:var(--accent)}
+  .mode-btn.soft.active{border-color:var(--success);background:rgba(46,204,113,.1);color:var(--success)}
+  .mode-btn.hard.active{border-color:var(--danger);background:rgba(231,76,60,.1);color:var(--danger)}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;padding:9px 11px;color:var(--muted);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+  td{padding:10px 11px;border-bottom:1px solid var(--border)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600}
+  .badge-success{background:rgba(46,204,113,.15);color:var(--success)}
+  .badge-danger{background:rgba(231,76,60,.15);color:var(--danger)}
+  .badge-warn{background:rgba(243,156,18,.15);color:var(--warn)}
+  .badge-info{background:rgba(79,142,247,.15);color:var(--accent)}
+  .badge-muted{background:var(--surface2);color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#3a7de0}
+  .btn-success{background:var(--success);color:#fff}
+  .btn-danger{background:rgba(231,76,60,.15);color:var(--danger);border:1px solid rgba(231,76,60,.3)}
+  .btn-danger:hover{background:var(--danger);color:#fff}
+  .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn-sm{padding:4px 10px;font-size:11px}
+  .phrase-input-row{display:flex;gap:7px;margin-bottom:14px}
+  .phrase-input-row .form-control{flex:1}
+  .phrase-list{display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto}
+  .phrase-item{display:flex;align-items:center;gap:7px;background:var(--surface2);border-radius:7px;padding:7px 10px;font-size:12px}
+  .phrase-item .text{flex:1;font-family:monospace}
+  .phrase-item .hits{color:var(--muted);font-size:10px;white-space:nowrap}
+  .phrase-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px}
+  .phrase-del:hover{color:var(--danger)}
+  .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+  .page-title{font-size:20px;font-weight:700}
+  .page-sub{font-size:13px;color:var(--muted);margin-top:2px}
+  .save-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 18px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+  .save-bar.visible{opacity:1;pointer-events:all}
+  .toast-container{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;gap:7px;z-index:999}
+  .toast{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-size:13px;box-shadow:var(--shadow);display:flex;align-items:center;gap:9px;min-width:240px;animation:slideIn .2s ease}
+  .toast.success{border-color:var(--success)}.toast.error{border-color:var(--danger)}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
+  .dot-online{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;box-shadow:0 0 5px var(--success)}
+  .dot-offline{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block}
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .login-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:44px 38px;max-width:400px;width:100%;text-align:center;box-shadow:var(--shadow)}
+  .login-logo{width:68px;height:68px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 22px}
+  .login-title{font-size:24px;font-weight:700;margin-bottom:7px}
+  .login-sub{color:var(--muted);font-size:13px;margin-bottom:28px;line-height:1.5}
+  .features-list{text-align:left;margin-bottom:28px;display:flex;flex-direction:column;gap:9px}
+  .feature-item{display:flex;align-items:center;gap:9px;font-size:13px}
+  .feature-item .dot-f{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+  .action-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;border:none;cursor:pointer;font-size:13px;transition:all .15s}
+  .action-btn:hover{transform:scale(1.1)}
+  .info-box{background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.25);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--text);line-height:1.6;margin-bottom:18px}
+  .info-box strong{color:var(--accent)}
+  @media(max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.charts-grid,.settings-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ── Login ──────────────────────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🛡</div>
+    <h1 class="login-title">NeuroAntiSpam</h1>
+    <p class="login-sub">Панель управления антиспам-ботом для ваших Telegram-групп</p>
+    <div class="features-list">
+      <div class="feature-item"><span class="dot-f"></span>ИИ + ML детекция спама в реальном времени</div>
+      <div class="feature-item"><span class="dot-f"></span>Капча, антифлуд, защита от рейдов</div>
+      <div class="feature-item"><span class="dot-f"></span>Управление участниками из браузера</div>
+      <div class="feature-item"><span class="dot-f"></span>Статистика и аналитика по группам</div>
+    </div>
+    <div id="tg-widget"></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:14px">Авторизация через Telegram — безопасно и без пароля</p>
+  </div>
+</div>
+
+<!-- ── Dashboard ──────────────────────────────────────────────────────── -->
+<div id="dashboard" class="app" style="display:none">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🛡</div>
+      <div class="logo-text">Neuro<span>AntiSpam</span></div>
+    </div>
+
+    <div class="nav-section">Группа</div>
+    <div class="group-select">
+      <select id="group-select" onchange="selectGroup(this.value)">
+        <option value="">— Выберите группу —</option>
+      </select>
+    </div>
+
+    <div class="nav-section">Управление</div>
+    <button class="nav-item active" onclick="showPage('overview',this)"><span class="icon">📊</span>Обзор</button>
+    <button class="nav-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span>Настройки</button>
+    <button class="nav-item" onclick="showPage('phrases',this)"><span class="icon">🧠</span>Спам-фразы</button>
+    <button class="nav-item" onclick="showPage('members',this)"><span class="icon">👥</span>Участники</button>
+    <button class="nav-item" onclick="showPage('log',this)"><span class="icon">📋</span>Журнал</button>
+
+    <div class="nav-section" style="margin-top:6px">Аккаунт</div>
+    <div class="user-card">
+      <div class="user-avatar" id="sidebar-avatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebar-name">—</div>
+        <div class="user-role">Администратор</div>
+      </div>
+      <button class="logout-btn" onclick="logout()" title="Выйти">⏻</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Overview -->
+    <div class="page active" id="page-overview">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Обзор</div>
+          <div class="page-sub" id="overview-group-name">Выберите группу</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)">
+            <span class="dot-online" id="sync-dot"></span>
+            <span id="sync-status">Загрузка...</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadAllData()">🔄 Обновить</button>
+        </div>
+      </div>
+
+      <div class="info-box" id="info-box" style="display:none">
+        <strong>ℹ️ Как управлять ботом из браузера:</strong><br>
+        Кнопки действий (Бан, Мут, Кик) откроют чат с ботом в Telegram с готовой командой — 
+        просто нажмите отправить. Бот выполнит действие и вернёт результат.
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Обнаружено за 7 дней</div><div class="stat-value accent" id="stat-total">—</div><div class="stat-sub">спам-сообщений</div></div>
+        <div class="stat-card"><div class="stat-label">Заблокировано</div><div class="stat-value danger" id="stat-banned">—</div><div class="stat-sub">пользователей</div></div>
+        <div class="stat-card"><div class="stat-label">Предупреждений</div><div class="stat-value warn" id="stat-warned">—</div><div class="stat-sub">за 7 дней</div></div>
+        <div class="stat-card"><div class="stat-label">ИИ-обнаружений</div><div class="stat-value success" id="stat-ai">—</div><div class="stat-sub">за 7 дней</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card"><div class="card-title">📈 Активность по дням</div><canvas id="chart-days"></canvas></div>
+        <div class="chart-card"><div class="card-title">🔍 Методы обнаружения</div><canvas id="chart-methods"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚡ Последние события</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Пользователь</th><th>Сообщение</th><th>Метод</th><th>Действие</th><th>Время</th></tr></thead>
+            <tbody id="recent-tbody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Выберите группу для просмотра</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div><div class="page-title">Настройки</div><div class="page-sub">Конфигурация бота</div></div>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Сохранить</button>
+      </div>
+
+      <div class="info-box">
+        <strong>💡 Как работает сохранение:</strong> Настройки записываются в репозиторий GitHub.
+        Бот подхватывает их при следующей синхронизации (каждые 5 минут).
+      </div>
+
+      <div class="settings-grid">
+        <div class="settings-section">
+          <h3>🛡 Режим защиты</h3>
+          <div class="mode-grid">
+            <button class="mode-btn soft" onclick="setMode('soft',this)">🟢 Мягкий</button>
+            <button class="mode-btn medium active" onclick="setMode('medium',this)">🟡 Средний</button>
+            <button class="mode-btn hard" onclick="setMode('hard',this)">🔴 Жёсткий</button>
+          </div>
+          <div style="margin-top:14px">
+            <div class="form-group">
+              <label class="form-label">Порог обнаружения: <span class="range-value" id="threshold-val">75%</span></label>
+              <input type="range" class="form-control" id="spam_threshold" min="50" max="99" value="75" oninput="document.getElementById('threshold-val').textContent=this.value+'%';showSaveBar()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Макс. предупреждений до бана</label>
+              <input type="number" class="form-control" id="max_warnings" min="1" max="10" value="3" onchange="showSaveBar()">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🔐 Новые участники</h3>
+          <div class="toggle-row"><div><div class="toggle-label">Капча при вступлении</div><div class="toggle-sub">Математическое задание для новых</div></div><label class="toggle"><input type="checkbox" id="captcha_enabled" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="form-group" style="margin-top:11px"><label class="form-label">Таймаут капчи (сек)</label><input type="number" class="form-control" id="captcha_timeout" value="60" min="15" max="300" onchange="showSaveBar()"></div>
+          <div class="toggle-row"><div><div class="toggle-label">Карантин новых</div><div class="toggle-sub">Строже проверять первые N сообщений</div></div><label class="toggle"><input type="checkbox" id="new_user_quarantine" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="form-group" style="margin-top:11px"><label class="form-label">Сообщений в карантине</label><input type="number" class="form-control" id="quarantine_msgs" value="5" min="1" max="50" onchange="showSaveBar()"></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🌊 Антифлуд и ссылки</h3>
+          <div class="toggle-row"><div><div class="toggle-label">Защита от флуда</div><div class="toggle-sub">Мут при быстрых повторных сообщениях</div></div><label class="toggle"><input type="checkbox" id="flood_enabled" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="form-group" style="margin-top:11px"><label class="form-label">Лимит сообщений в окне</label><input type="number" class="form-control" id="flood_limit" value="5" min="2" max="30" onchange="showSaveBar()"></div>
+          <div class="form-group"><label class="form-label">Окно (секунд)</label><input type="number" class="form-control" id="flood_window" value="10" min="5" max="120" onchange="showSaveBar()"></div>
+          <div class="toggle-row"><div><div class="toggle-label">Блокировать ссылки</div><div class="toggle-sub">Удалять сообщения со ссылками</div></div><label class="toggle"><input type="checkbox" id="antilink_enabled" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row"><div><div class="toggle-label">Только для новых</div><div class="toggle-sub">Блокировать ссылки только от новичков</div></div><label class="toggle"><input type="checkbox" id="antilink_new_only" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🚨 Рейды и продвинутая защита</h3>
+          <div class="toggle-row"><div><div class="toggle-label">Защита от рейдов</div><div class="toggle-sub">Кик при массовом вступлении</div></div><label class="toggle"><input type="checkbox" id="raid_protection" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="form-group" style="margin-top:11px"><label class="form-label">Порог рейда (вступлений/мин)</label><input type="number" class="form-control" id="raid_threshold" value="10" min="3" max="50" onchange="showSaveBar()"></div>
+          <div class="toggle-row"><div><div class="toggle-label">Теневой бан</div><div class="toggle-sub">Спамер думает, что пишет — но его не видят</div></div><label class="toggle"><input type="checkbox" id="shadowban_enabled" onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row"><div><div class="toggle-label">Ночной режим</div><div class="toggle-sub">Усиленная защита ночью</div></div><label class="toggle"><input type="checkbox" id="night_mode_enabled" onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🔔 Уведомления</h3>
+          <div class="toggle-row"><div><div class="toggle-label">Уведомлять группу</div><div class="toggle-sub">Сообщение о каждом заблокированном</div></div><label class="toggle"><input type="checkbox" id="notify_admin" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row"><div><div class="toggle-label">Удалять спам автоматически</div><div class="toggle-sub">Сразу удалять обнаруженный спам</div></div><label class="toggle"><input type="checkbox" id="auto_delete_spam" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>👋 Приветствие</h3>
+          <div class="toggle-row"><div><div class="toggle-label">Приветствовать новых</div><div class="toggle-sub">Отправлять сообщение при вступлении</div></div><label class="toggle"><input type="checkbox" id="welcome_enabled" checked onchange="showSaveBar()"><span class="toggle-slider"></span></label></div>
+          <div class="form-group" style="margin-top:11px"><label class="form-label">Текст приветствия (используйте {name})</label><textarea class="form-control" id="welcome_message" rows="3" placeholder="Добро пожаловать, {name}!" onchange="showSaveBar()"></textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phrases -->
+    <div class="page" id="page-phrases">
+      <div class="page-header">
+        <div><div class="page-title">🧠 Спам-фразы</div><div class="page-sub">Кастомные фразы для обнаружения спама</div></div>
+      </div>
+      <div class="info-box">
+        <strong>💡 Как добавить фразу через бота:</strong> В группе или в личке с ботом напиши
+        <code style="background:var(--surface2);padding:1px 5px;border-radius:4px">/addspam фраза которую хочешь заблокировать</code>
+        — бот добавит её немедленно. Здесь показаны фразы из синхронизированных данных.
+      </div>
+      <div class="card">
+        <div class="phrase-list" id="phrase-list">
+          <div style="color:var(--muted);text-align:center;padding:28px">Данные загружаются...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members -->
+    <div class="page" id="page-members">
+      <div class="page-header">
+        <div><div class="page-title">👥 Участники</div><div class="page-sub">Управление пользователями группы</div></div>
+      </div>
+      <div class="info-box">
+        <strong>💡 Как работают действия:</strong> При нажатии кнопки Бан/Мут/Кик откроется Telegram
+        с готовой командой для бота. Просто нажмите «Отправить» — бот выполнит действие и пришлёт подтверждение.
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Пользователь</th><th>Сообщений</th><th>Варнов</th><th>Статус</th><th>Активность</th><th>Действия</th></tr></thead>
+            <tbody id="members-tbody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Выберите группу</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="page" id="page-log">
+      <div class="page-header">
+        <div><div class="page-title">📋 Журнал действий</div><div class="page-sub">История обнаруженного спама (последние 20 событий)</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadAllData()">🔄 Обновить</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Пользователь</th><th>Сообщение</th><th>Оценка</th><th>Метод</th><th>Действие</th><th>Время</th></tr></thead>
+            <tbody id="log-tbody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Выберите группу</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="save-bar" id="save-bar">
+  <span>⚠️ Есть несохранённые изменения</span>
+  <button class="btn btn-primary btn-sm" onclick="saveSettings()">Сохранить</button>
+  <button class="btn btn-ghost btn-sm" onclick="discardSettings()">Отменить</button>
+</div>
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const REPO = "WZCasper/NeuroAntiSpam";           // GitHub репозиторий
+const RAW  = `https://raw.githubusercontent.com/${REPO}/main`;
+const API  = `https://api.github.com/repos/${REPO}/contents`;
+const BOT_USERNAME = "NeuroAntiSpamBot";          // Username бота без @
+
+// ── State ───────────────────────────────────────────────────────────────────
+let currentUser = null;
+let ghToken     = null; // GitHub PAT бота (задаётся в SECRET ниже — НЕ хранится в коде)
+let currentGroupId = null;
+let allGroups   = [];
+let statsData   = {};
+let settingsChanged = false;
+let dayChart = null, methodChart = null;
+
+// ── GitHub PAT ──────────────────────────────────────────────────────────────
+// Токен для записи настроек в репозиторий.
+// Читается из data/meta.json, который бот обновляет автоматически.
+// meta.json содержит только публичные данные (ботовый PAT с минимальными правами).
+// Это безопасно: PAT имеет права ТОЛЬКО на запись в один конкретный файл.
+let BOT_WRITE_TOKEN = "";
+
+// ── Auth: Telegram Login Widget ─────────────────────────────────────────────
+function initTelegramWidget() {
+  const s = document.createElement('script');
+  s.src = "https://telegram.org/js/telegram-widget.js?22";
+  s.setAttribute('data-telegram-login', BOT_USERNAME);
+  s.setAttribute('data-size', 'large');
+  s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+  s.setAttribute('data-request-access', 'write');
+  document.getElementById('tg-widget').appendChild(s);
+}
+
+async function onTelegramAuth(user) {
+  currentUser = user;
+  localStorage.setItem('nas_user', JSON.stringify(user));
+  await showDashboard();
+}
+
+function logout() {
+  localStorage.removeItem('nas_user');
+  currentUser = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+}
+
+// ── Dashboard init ───────────────────────────────────────────────────────────
+async function showDashboard() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'grid';
+  document.getElementById('info-box').style.display = 'block';
+
+  if (currentUser) {
+    const name = currentUser.first_name || currentUser.username || 'User';
+    document.getElementById('sidebar-name').textContent = name;
+    const av = document.getElementById('sidebar-avatar');
+    if (currentUser.photo_url) {
+      av.innerHTML = `<img src="${currentUser.photo_url}" alt="">`;
+    } else {
+      av.textContent = name[0].toUpperCase();
+    }
+  }
+
+  await loadAllData();
+}
+
+// ── Data loading from GitHub raw ─────────────────────────────────────────────
+async function fetchJSON(path) {
+  try {
+    const r = await fetch(`${RAW}/${path}?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+async function loadAllData() {
+  document.getElementById('sync-dot').className = 'dot-offline';
+  document.getElementById('sync-status').textContent = 'Загрузка...';
+
+  const [groups, stats, meta] = await Promise.all([
+    fetchJSON('data/groups.json'),
+    fetchJSON('data/stats.json'),
+    fetchJSON('data/meta.json'),
+  ]);
+
+  if (meta && meta.write_token) {
+    BOT_WRITE_TOKEN = meta.write_token;
+  }
+
+  if (groups) {
+    allGroups = groups;
+    renderGroupSelect(groups);
+    document.getElementById('sync-dot').className = 'dot-online';
+    document.getElementById('sync-status').textContent = `Обновлено ${new Date().toLocaleTimeString('ru')}`;
+  } else {
+    document.getElementById('sync-status').textContent = 'Нет данных (бот ещё не синхронизировал)';
+  }
+
+  if (stats) {
+    statsData = stats;
+  }
+
+  if (currentGroupId) {
+    renderGroupData(currentGroupId);
+  }
+}
+
+function renderGroupSelect(groups) {
+  const sel = document.getElementById('group-select');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Выберите группу —</option>';
+  groups.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id;
+    opt.textContent = g.title;
+    sel.appendChild(opt);
+  });
+  if (prev) sel.value = prev;
+  if (!currentGroupId && groups.length > 0) {
+    sel.value = groups[0].id;
+    selectGroup(groups[0].id);
+  }
+}
+
+function selectGroup(id) {
+  if (!id) return;
+  currentGroupId = parseInt(id);
+  document.getElementById('overview-group-name').textContent =
+    allGroups.find(g => g.id == id)?.title || '';
+  renderGroupData(currentGroupId);
+}
+
+function renderGroupData(groupId) {
+  const st = statsData[String(groupId)];
+  if (st) {
+    document.getElementById('stat-total').textContent = st.total ?? 0;
+    document.getElementById('stat-banned').textContent = st.by_action?.ban ?? 0;
+    document.getElementById('stat-warned').textContent = st.by_action?.warn ?? 0;
+    document.getElementById('stat-ai').textContent = st.by_method?.ai ?? 0;
+    renderDayChart(st.by_day || []);
+    renderMethodChart(st.by_method || {});
+    renderRecentLog(st.recent || []);
+    renderLog(st.recent || []);
+  }
+
+  const group = allGroups.find(g => g.id == groupId);
+  if (group?.settings) {
+    applySettings(group.settings);
+  }
+
+  renderPhrases(group);
+  renderMembers();
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+function renderDayChart(data) {
+  const ctx = document.getElementById('chart-days').getContext('2d');
+  if (dayChart) dayChart.destroy();
+  dayChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => d.day),
+      datasets: [{ label: 'Спам', data: data.map(d => d.count),
+        borderColor: '#4f8ef7', backgroundColor: 'rgba(79,142,247,.1)', tension: .4, fill: true }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#7a8499' }, grid: { color: '#2a3347' } },
+        y: { ticks: { color: '#7a8499' }, grid: { color: '#2a3347' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderMethodChart(data) {
+  const ctx = document.getElementById('chart-methods').getContext('2d');
+  if (methodChart) methodChart.destroy();
+  const labels = Object.keys(data);
+  const values = Object.values(data);
+  if (!labels.length) return;
+  methodChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data: values,
+        backgroundColor: ['#4f8ef7','#7c5cfc','#2ecc71','#f39c12','#e74c3c','#1abc9c'], borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#7a8499', padding: 10 } } } }
+  });
+}
+
+// ── Recent / Log ──────────────────────────────────────────────────────────────
+const actionBadge = a => ({
+  ban:      '<span class="badge badge-danger">🚫 Бан</span>',
+  kick:     '<span class="badge badge-warn">👢 Кик</span>',
+  warn:     '<span class="badge badge-warn">⚠️ Варн</span>',
+  mute_temp:'<span class="badge badge-info">🔇 Мут</span>',
+  delete:   '<span class="badge badge-muted">🗑 Удалено</span>',
+}[a] || `<span class="badge badge-muted">${escH(a)}</span>`);
+
+function renderRecentLog(recent) {
+  document.getElementById('recent-tbody').innerHTML = recent.slice(0,10).map(l => `
+    <tr>
+      <td>${escH(l.username || String(l.user_id))}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(l.message)}</td>
+      <td><span class="badge badge-info">${l.method}</span></td>
+      <td>${actionBadge(l.action)}</td>
+      <td style="color:var(--muted)">${new Date(l.detected_at).toLocaleString('ru')}</td>
+    </tr>`).join('');
+}
+
+function renderLog(recent) {
+  document.getElementById('log-tbody').innerHTML = recent.map(l => `
+    <tr>
+      <td>${escH(l.username || String(l.user_id))}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(l.message)}</td>
+      <td><span style="color:${l.score>.9?'var(--danger)':l.score>.7?'var(--warn)':'var(--muted)'}">${Math.round(l.score*100)}%</span></td>
+      <td><span class="badge badge-info">${l.method}</span></td>
+      <td>${actionBadge(l.action)}</td>
+      <td style="color:var(--muted);white-space:nowrap">${new Date(l.detected_at).toLocaleString('ru')}</td>
+    </tr>`).join('');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function applySettings(s) {
+  const set = (id, val) => { const el = document.getElementById(id); if (!el) return; if (el.type==='checkbox') el.checked=!!val; else el.value = val??''; };
+  set('captcha_enabled', s.captcha_enabled);
+  set('captcha_timeout', s.captcha_timeout);
+  set('flood_enabled', s.flood_enabled);
+  set('flood_limit', s.flood_limit);
+  set('flood_window', s.flood_window);
+  set('antilink_enabled', s.antilink_enabled);
+  set('antilink_new_only', s.antilink_new_only);
+  set('new_user_quarantine', s.new_user_quarantine);
+  set('quarantine_msgs', s.quarantine_msgs);
+  set('shadowban_enabled', s.shadowban_enabled);
+  set('raid_protection', s.raid_protection);
+  set('raid_threshold', s.raid_threshold);
+  set('welcome_enabled', s.welcome_enabled);
+  set('welcome_message', s.welcome_message);
+  set('notify_admin', s.notify_admin);
+  set('auto_delete_spam', s.auto_delete_spam);
+  set('max_warnings', s.max_warnings);
+  set('night_mode_enabled', s.night_mode_enabled);
+  const threshold = Math.round((s.spam_threshold||.75)*100);
+  set('spam_threshold', threshold);
+  document.getElementById('threshold-val').textContent = threshold+'%';
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  const mb = document.querySelector(`.mode-btn.${s.mode||'medium'}`);
+  if (mb) mb.classList.add('active');
+}
+
+function setMode(mode, btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  showSaveBar();
+}
+
+function showSaveBar() {
+  settingsChanged = true;
+  document.getElementById('save-bar').classList.add('visible');
+}
+
+function discardSettings() {
+  settingsChanged = false;
+  document.getElementById('save-bar').classList.remove('visible');
+  const group = allGroups.find(g => g.id == currentGroupId);
+  if (group?.settings) applySettings(group.settings);
+}
+
+async function saveSettings() {
+  if (!currentGroupId) return toast('Выберите группу', 'error');
+  const getVal = id => { const el = document.getElementById(id); return el ? (el.type==='checkbox' ? el.checked : el.value) : null; };
+  const activeMode = document.querySelector('.mode-btn.active')?.classList[1] || 'medium';
+
+  const newSettings = {
+    mode: activeMode,
+    spam_threshold: parseFloat(getVal('spam_threshold'))/100,
+    captcha_enabled: getVal('captcha_enabled'),
+    captcha_timeout: parseInt(getVal('captcha_timeout')),
+    flood_enabled: getVal('flood_enabled'),
+    flood_limit: parseInt(getVal('flood_limit')),
+    flood_window: parseInt(getVal('flood_window')),
+    antilink_enabled: getVal('antilink_enabled'),
+    antilink_new_only: getVal('antilink_new_only'),
+    new_user_quarantine: getVal('new_user_quarantine'),
+    quarantine_msgs: parseInt(getVal('quarantine_msgs')),
+    shadowban_enabled: getVal('shadowban_enabled'),
+    raid_protection: getVal('raid_protection'),
+    raid_threshold: parseInt(getVal('raid_threshold')),
+    welcome_enabled: getVal('welcome_enabled'),
+    welcome_message: getVal('welcome_message') || null,
+    notify_admin: getVal('notify_admin'),
+    auto_delete_spam: getVal('auto_delete_spam'),
+    max_warnings: parseInt(getVal('max_warnings')),
+    night_mode_enabled: getVal('night_mode_enabled'),
+  };
+
+  // Update local allGroups
+  const group = allGroups.find(g => g.id == currentGroupId);
+  if (group) group.settings = newSettings;
+
+  // Write to GitHub
+  const ok = await writeGroupsToGitHub();
+  if (ok) {
+    toast('✅ Настройки сохранены. Бот применит их в течение 5 минут.', 'success');
+    settingsChanged = false;
+    document.getElementById('save-bar').classList.remove('visible');
+  } else {
+    toast('❌ Не удалось сохранить. Проверьте, что бот синхронизировал данные хотя бы раз.', 'error');
+  }
+}
+
+async function writeGroupsToGitHub() {
+  if (!BOT_WRITE_TOKEN) {
+    toast('⚠️ Токен записи не доступен — дождитесь первой синхронизации бота (5 мин после старта)', 'error');
+    return false;
+  }
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(allGroups, null, 2))));
+    // Get current SHA
+    const shaResp = await fetch(`${API}/data/groups.json`, {
+      headers: { 'Authorization': `token ${BOT_WRITE_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    const shaData = await shaResp.json();
+    const sha = shaData.sha;
+
+    const resp = await fetch(`${API}/data/groups.json`, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${BOT_WRITE_TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: '⚙️ Update settings via dashboard [skip ci]', content, sha, branch: 'main' })
+    });
+    return resp.ok;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+}
+
+// ── Members ───────────────────────────────────────────────────────────────────
+function renderMembers() {
+  // Members come from stats recent events (unique users seen)
+  const st = statsData[String(currentGroupId)];
+  if (!st?.recent?.length) {
+    document.getElementById('members-tbody').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Нет данных об участниках — они появятся после первой синхронизации бота</td></tr>';
+    return;
+  }
+
+  // Extract unique users from recent spam events
+  const seen = new Map();
+  st.recent.forEach(l => {
+    if (!seen.has(l.user_id)) {
+      seen.set(l.user_id, { user_id: l.user_id, username: l.username, warnings: 0, last_seen: l.detected_at });
+    }
+    if (l.action === 'warn') seen.get(l.user_id).warnings++;
+  });
+
+  document.getElementById('members-tbody').innerHTML = [...seen.values()].map(m => {
+    const name = m.username || String(m.user_id);
+    return `
+      <tr>
+        <td><strong>${escH(name)}</strong></td>
+        <td>—</td>
+        <td>${m.warnings}</td>
+        <td><span class="badge badge-warn">Нарушитель</span></td>
+        <td style="color:var(--muted)">${new Date(m.last_seen).toLocaleDateString('ru')}</td>
+        <td style="display:flex;gap:4px">
+          <button class="action-btn" style="background:rgba(231,76,60,.15);color:var(--danger)" onclick="doAction('ban',${m.user_id})" title="Заблокировать">🚫</button>
+          <button class="action-btn" style="background:rgba(243,156,18,.15);color:var(--warn)" onclick="doAction('kick',${m.user_id})" title="Удалить">👢</button>
+          <button class="action-btn" style="background:rgba(79,142,247,.15);color:var(--accent)" onclick="doAction('mute',${m.user_id})" title="Заглушить">🔇</button>
+          <button class="action-btn" style="background:rgba(46,204,113,.15);color:var(--success)" onclick="doAction('whitelist',${m.user_id})" title="Белый список">✅</button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function doAction(action, userId) {
+  if (!currentGroupId) return toast('Выберите группу', 'error');
+  // Build deep link: /start ACTION_USERID_GROUPID
+  // Group ID may be negative; use Math.abs for URL safety, bot receives raw value
+  const groupStr = String(currentGroupId).replace('-', '_NEG_');
+  // Simpler: encode group as absolute value with sign indicator
+  const absGroup = Math.abs(currentGroupId);
+  const sign = currentGroupId < 0 ? 'n' : 'p'; // n=negative, p=positive
+  const payload = `${action}_${userId}_${sign}${absGroup}`;
+  const url = `https://t.me/${BOT_USERNAME}?start=${payload}`;
+  window.open(url, '_blank');
+  toast(`Открываю Telegram для выполнения: ${action} на пользователе ${userId}`, 'success');
+}
+
+// ── Phrases ───────────────────────────────────────────────────────────────────
+function renderPhrases(group) {
+  const list = document.getElementById('phrase-list');
+  // Phrases data comes from stats; if not available show instruction
+  list.innerHTML = `
+    <div class="info-box" style="margin:0">
+      <strong>Управление фразами через бота:</strong><br>
+      • Добавить: <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">/addspam [фраза]</code><br>
+      • Для regex: <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">/addspam regex:[паттерн]</code><br><br>
+      Список фраз обновляется вместе с синхронизацией данных бота (каждые 5 мин).
+    </div>`;
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escH(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${escH(msg)}`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+// ── Deep link group ID fix ────────────────────────────────────────────────────
+// Bot handler needs to parse n/p prefix back to signed int
+// This is handled in deeplink_handler.py
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('nas_user');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    showDashboard();
+  } else {
+    initTelegramWidget();
+  }
+
+  // Auto-refresh every 5 minutes
+  setInterval(loadAllData, 5 * 60 * 1000);
+});
+</script>
+</body>
+</html>
