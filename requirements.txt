@@ -1,0 +1,6 @@
+python-telegram-bot[job-queue]==21.5
+sqlalchemy[asyncio]==2.0.35
+aiosqlite==0.20.0
+scikit-learn==1.5.2
+aiohttp==3.10.5
+numpy==1.26.4
